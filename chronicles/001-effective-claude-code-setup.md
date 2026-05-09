@@ -137,33 +137,64 @@ Generic skills are fine starting points. The highest-leverage skills are the one
 
 ---
 
-## Plugins
+## When to Reach Beyond the Basics
 
-A plugin is a directory bundling any combination of skills, subagents, hooks, slash commands, MCP server configs, and background monitors. Plugins are the unit of distribution and version control for harness work.
+The setup described above — single agent, good context, a handful of skills, built-in tools, plan-first workflow — is enough for most work. Most teams never need more than this. The agent already has filesystem, shell, and search; through those primitives it can read your code, run your tests, hit APIs via curl, query databases via the CLI, and interact with anything you have a command-line tool for.
 
-Use them to:
+Industry messaging suggests you should immediately wire up a dozen MCPs and install plugins from a marketplace. The practitioners actually shipping serious agentic-coding workflows in production take a much more measured view — MCPs and plugins are tools of last resort behind CLIs and skills, not defaults. Reach for them when you hit specific limits.
 
-- Share a curated set of skills and subagents across a team.
-- Pin specific versions of harness behaviour to a repo.
-- Distribute company-wide conventions (review patterns, deployment workflows, security checks) without copy-paste.
+### MCPs — when the agent needs to develop against a system, not just call it
 
-For most individuals, you won't need plugins until you're sharing harness work with others. For teams, this is where standard practice lives.
+The distinction matters. *Calling* a system is firing a request and parsing the response — `curl` handles that fine. *Developing against* a system means reading state, planning changes, making coherent updates, verifying, and iterating with the system's model in the agent's head while it works.
 
----
+MCPs earn their place in the second case. Strong examples:
 
-## Tools and MCP
+- **Stripe** — building billing logic, reasoning about products and prices, configuring webhooks, verifying test charges. The agent benefits from the system's vocabulary, not just its endpoints.
+- **Terraform** — reasoning about state, planning changes, understanding resource dependencies. Far better than parsing `terraform plan` output.
+- **AWS and other cloud providers** — reasoning about resource graphs, IAM, networking, infrastructure relationships rather than calling individual endpoints.
+- **Databases with complex schemas** — structured introspection, type-aware queries, schema-aware migrations. Use read-only roles and never point at production.
+- **Browser automation** — there's no curl-equivalent for clicking, filling forms, or asserting on rendered output.
+- **Observability** — feeding live production telemetry (logs, traces, metrics, incidents) into the agent during a debugging session.
 
-Tool definitions get loaded into the context window on every turn. Every tool you expose costs tokens before any work begins.
+When MCPs are usually not worth it:
 
-- A wide tool surface can burn significant context just on definitions.
-- Bloated or overlapping tool sets create ambiguous decision points and degrade tool selection. If a human engineer can't tell which of two tools to use in a given situation, the agent can't either.
-- Cap concurrent tool servers. A handful per project is a reasonable ceiling.
+- Your own codebase — the agent has the filesystem already.
+- Your own services — the agent can read the handler code and call the API directly.
+- Stateless API surfaces where a well-written CLI works just as well. Most public APIs fall into this bucket.
+- Anything you'd add "just in case." Tool definitions cost context every turn, regardless of whether they're used.
 
-**Prefer agentic search over RAG-first patterns** for codebase work. Standard tools like `grep`, `find`, and `tail` let the agent pull what it needs just-in-time rather than pre-loading retrievals that may not be relevant.
+**Treat MCPs as a context-budget item, not a feature checklist.** Tool definitions get loaded into context on every turn, before the agent does any work. Three thoughtfully chosen servers will leave the agent room to think; ten will starve it. Real configurations have been measured consuming nearly half the context window on tool definitions alone before any task begins. If your harness lets you defer tool definitions until needed (sometimes called tool search or progressive loading), turn it on.
 
-**For large tool surfaces, use the code-execution pattern.** Instead of exposing tools as flat definitions, expose them as a typed API the agent writes code against, run in a sandbox, with only the relevant final result returned to the model context. Massive token savings, better composition, intermediate data never enters the context window.
+The ecosystem is also moving from "load every tool definition upfront" to "let the agent write code against a typed SDK and execute it in a sandbox" — a pattern variously called Code Mode or code-execution-with-MCP. Expect MCPs you adopt today to evolve toward this model. Servers that already work this way (a single `search` and `execute` interface backed by a typed API) cost a fraction of the context of traditional tool-registry MCPs.
 
-**Treat tool servers as microservices.** Per-project credentials, read-only modes until usage patterns are observed, structured audit logs, secrets in a vault — not the JSON config.
+A handful of MCPs per project is a reasonable ceiling. Pick the ones that match systems you actively develop against; skip the rest.
+
+For everything else — agentic search over RAG-first patterns, treating tool servers as microservices with per-project credentials, read-only modes, audit logs, secrets in a vault — the same hygiene applies as it does to any external dependency.
+
+### Plugins — when you need to share your setup, not extend it
+
+Plugins are a distribution mechanism. They don't give the agent any capability that skills, subagents, hooks, and MCP configs don't already provide individually — what they give you is packaging.
+
+Reach for them when:
+
+- You're sharing harness work across a team and want everyone to have the same skills, subagents, and hooks without copy-paste.
+- You want to version-control your harness setup alongside the code it operates on.
+- You're distributing patterns publicly.
+
+Skip them when you're working solo or with a small team that can sync via the codebase. Plugins solve a distribution problem; if you don't have one, they add ceremony without benefit.
+
+**Trust hierarchy matters.** A plugin can execute arbitrary code on your machine. The reasonable order of trust, roughly:
+
+1. Official vendor marketplace published by the harness maintainer.
+2. Plugins published by the company whose system they integrate with (the people who run the service publishing their own plugin).
+3. Curated community marketplaces from known maintainers.
+4. Arbitrary repositories on the open internet.
+
+Treat the last tier the way you'd treat any unreviewed dependency. Read the manifest, look at the hooks and scripts, decide if you trust them.
+
+### The pattern
+
+MCPs and plugins aren't starting points. They're responses to friction you've actually felt. If you haven't hit the friction, you don't need them yet — and adding them speculatively makes your setup worse, not better.
 
 ---
 
