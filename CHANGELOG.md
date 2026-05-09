@@ -2,10 +2,23 @@
 
 ## [Unreleased]
 
-### Added
-- Initial chronicle: Effective Claude Code Setup.
-- Repo structure: README as index, chronicles/ for individual entries.
-- CC-BY-4.0 license.
+### 2026-05-09 — Chronicle 001 v2
+
+Added:
+- Mental model: "don't fix a context problem by switching models"
+- Hooks section as the deterministic enforcement layer
+- Cross-Session State section covering the persistent-Markdown-directory pattern
+- Skills security trust hierarchy (mirrors plugins)
+- Quick Reference entries for hooks, skills-as-third-party-code, persistence, and context-over-model
+
+Changed:
+- Sharpened phrasing throughout, removed appeals to authority
+- Promoted thoughts/ pattern from a workflow bullet to a full section
+
+### Initial commit
+- Initial chronicle: Effective Claude Code Setup
+- Repo structure: README as index, chronicles/ for individual entries
+- CC-BY-4.0 license
 
 ## Sources informing the current draft
 

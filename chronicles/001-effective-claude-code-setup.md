@@ -16,6 +16,8 @@ A working guide for individuals, teams, and companies adopting Claude Code. Focu
 
 **Models predict tokens.** Post-training adds behaviour on top, but the underlying mechanism is sampling from a probability distribution. Models pattern-match on context — garbage in, garbage out. This paradigm is unlikely to shift dramatically; the leverage is in context engineering and the harness, not in waiting for the next model.
 
+**Don't fix a context problem by switching models.** When an agent fails on a long task, the first lever is context engineering — scope, compaction, scaffolding, tool budget. Model upgrades exist and sometimes matter, but they don't substitute for harness work; they expose where the harness is missing.
+
 ---
 
 ## What Makes Up the Context
@@ -133,7 +135,36 @@ When a skill fails:
 
 Generic skills are fine starting points. The highest-leverage skills are the ones you build for your own work — they capture taste, conventions, and tribal knowledge the model can't get any other way.
 
-**Security note:** skills can include scripts and reference arbitrary files. Only install skills from sources you trust. Public skill registries have been found to contain malicious payloads. Review every `SKILL.md` before enabling.
+### Skills are third-party code
+
+A skill that ships scripts or references arbitrary files has the same blast radius as a plugin hook. Once enabled, it can execute on your machine on every relevant turn. Treat skills the way you'd treat any third-party dependency:
+
+1. Official vendor sources first.
+2. Plugins and skills published by the company whose system they integrate with.
+3. Curated community sources from known maintainers.
+4. Arbitrary repositories on the open internet — review before enabling.
+
+Public skill registries have been found to contain malicious payloads, including credential theft and ransomware staging. Read every `SKILL.md` before enabling. Pay particular attention to bundled scripts and `allowed-tools` declarations. Skills that contain no executable code (instructions only) are roughly as risky as system-prompt content; skills that ship scripts are software you're choosing to run.
+
+---
+
+## Hooks
+
+Skills, CLAUDE.md, and prompts are probabilistic guidance — the agent reads them and *usually* does the right thing. Hooks are different. A hook is a script that fires deterministically on a lifecycle event (before a tool call, after a file write, when a session ends). It runs every time, and it can block.
+
+Use hooks for things that must always happen, not things you'd like to happen:
+
+- Format and lint code after every write.
+- Block destructive commands before they run.
+- Run tests before allowing a commit.
+- Inject project-specific context at session start.
+- Notify external systems on session end.
+
+The mental model: skills capture knowledge the agent should reach for; hooks enforce invariants the agent cannot break. They're complementary, not competing — most serious setups use both.
+
+Hooks belong in your context file's territory of *deterministic enforcement*. Anything you've been tempted to write as "never do X" or "always do Y" in CLAUDE.md is probably better expressed as a hook. The instruction can be ignored under context pressure; the hook cannot.
+
+Hooks aren't a security boundary — a sufficiently determined prompt injection can find ways around them, and the script itself runs with whatever permissions you give it. But for the everyday case of "I want this thing to happen reliably," hooks are the only layer of the stack that gives you *reliably*.
 
 ---
 
@@ -141,7 +172,7 @@ Generic skills are fine starting points. The highest-leverage skills are the one
 
 The setup described above — single agent, good context, a handful of skills, built-in tools, plan-first workflow — is enough for most work. Most teams never need more than this. The agent already has filesystem, shell, and search; through those primitives it can read your code, run your tests, hit APIs via curl, query databases via the CLI, and interact with anything you have a command-line tool for.
 
-Industry messaging suggests you should immediately wire up a dozen MCPs and install plugins from a marketplace. The practitioners actually shipping serious agentic-coding workflows in production take a much more measured view — MCPs and plugins are tools of last resort behind CLIs and skills, not defaults. Reach for them when you hit specific limits.
+The serious practitioners shipping agentic-coding workflows in production take a measured view of MCPs and plugins — they're tools of last resort behind CLIs and skills, not defaults. Reach for them when you hit specific limits.
 
 ### MCPs — when the agent needs to develop against a system, not just call it
 
@@ -258,6 +289,29 @@ Practical rule: never run unrestricted agent automation on a workstation that ha
 
 ---
 
+## Cross-Session State
+
+The agent has no memory between sessions. Anything you want to carry forward — plans, research, decisions, postmortems — has to live somewhere it can read again later.
+
+The pattern that's emerged across serious setups is a project-scoped, version-controlled directory of dated Markdown documents. Different teams use different names — `thoughts/`, `ai-docs/`, `decisions/`, a `CHANGELOG.md` at the root — but the structure is consistent:
+
+- A single root location, checked into the repo.
+- Subdirectories by artefact type: research, plans, decisions, postmortems.
+- Dated, descriptive filenames.
+- The agent reads these at the start of relevant sessions and writes new ones at phase boundaries.
+
+This is what survives compaction. It's also what lets a fresh session pick up where a previous one left off — including a session run by a different team member, a different agent, or a future you who's forgotten the context.
+
+A few principles:
+
+- Write at phase boundaries (after research, after a plan is approved, after a debugging session resolves), not continuously. Small, decisive artefacts beat sprawling logs.
+- Keep them human-readable. Other people on the team will read these too.
+- Reference them deliberately. Tell the agent in CLAUDE.md when to look there ("Before starting a new feature, check `decisions/` for prior conventions"), rather than @-mentioning everything.
+
+Build small read-side helpers — slash commands or subagents that find and re-attach relevant prior artefacts — once you have enough of them to need indexing.
+
+---
+
 ## Workflow Patterns
 
 A handful of patterns that keep showing up in successful adoptions:
@@ -265,8 +319,6 @@ A handful of patterns that keep showing up in successful adoptions:
 **Plan-first.** Approval gates beat speed. The cost of iterating on a plan is tiny compared to the cost of iterating on a half-implemented feature.
 
 **Verification beats execution.** A large share of useful work is planning and review, not generation. Allocate accordingly.
-
-**Use a `thoughts/` directory** (or equivalent) for cross-session state. Plans, research, decisions go there explicitly. This is what survives compaction.
 
 **Tracer-bullet PRs over horizontal phasing.** Break work into vertical slices that go end-to-end (DB + service + UI) rather than horizontal phases (all DB first, then all API, then all UI). Agents default to horizontal; correct them. Vertical slices give end-to-end signal early.
 
@@ -291,6 +343,9 @@ A handful of patterns that keep showing up in successful adoptions:
 | Walk before codifying | Don't write a skill on first encounter — do it manually first |
 | Test your context | Use eval frameworks; untested skills can hurt performance |
 | Recursive improvement | Failed skill → diagnose → update → re-eval |
+| Hooks for invariants | Use hooks for anything that must always happen |
+| Skills are third-party code | Apply the same trust hierarchy as plugins |
+| Persist what matters | Cross-session state lives in version-controlled Markdown |
 | Start simple | One agent → subagents → multi-agent, in that order |
 | Plan first | Approve the plan before any code is written |
 | Verification > execution | Spend more time on plans and reviews than on generation |
@@ -299,6 +354,7 @@ A handful of patterns that keep showing up in successful adoptions:
 | Cap tool servers | A handful per project is a reasonable ceiling |
 | Sandbox automation | Managed permissions plus sandbox for anything touching real systems |
 | Trust the harness | Models are capable; context and harness are the differentiator |
+| Context > model upgrade | Fix the harness before reaching for a bigger model |
 | Keep questioning the harness | Re-evaluate scaffolding as models improve |
 
 ---
