@@ -18,6 +18,23 @@ A working guide for individuals, teams, and companies adopting Claude Code. Focu
 
 ---
 
+## What Makes Up the Context
+
+Every turn, Claude Code assembles its context window from a fixed set of components:
+
+- **System prompt** — the harness's built-in instructions. You don't control this directly, but it consumes a meaningful share of the budget.
+- **CLAUDE.md / AGENTS.md** — your persistent project context. Loaded on every turn.
+- **Skills** — names and descriptions of every available skill are loaded into the system prompt at startup. Skill bodies and bundled files load only when invoked.
+- **Tool definitions** — every tool exposed (built-in, MCP, custom) has its schema loaded into context before any work begins.
+- **Codebase** — files the agent has read this session.
+- **Conversation history** — your messages and the agent's previous turns and tool results.
+
+Knowing what's in the context window tells you where the budget goes, and where the leverage is. Bloated tool surfaces, oversized context files, and unfocused conversation history all cost the same thing: tokens that the model has to reason around.
+
+The rest of this guide is about managing each of these components deliberately.
+
+---
+
 ## Context as a Finite Budget
 
 Performance degrades as the context window fills. This is consistent across every frontier model that has been tested. The practitioner consensus has converged on a hard rule:
