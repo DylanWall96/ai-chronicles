@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### 2026-05-12 — Chronicle 001 v3
+
+Added:
+- Mental model: "match the model to the task" — tiered model usage by task complexity
+- Scaling: model-tier-per-subagent guidance
+- Quick Reference row for model-tier matching
+
 ### 2026-05-09 — Chronicle 001 v2
 
 Added:

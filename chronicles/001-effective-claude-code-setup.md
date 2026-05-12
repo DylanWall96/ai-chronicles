@@ -18,6 +18,8 @@ A working guide for individuals, teams, and companies adopting Claude Code. Focu
 
 **Don't fix a context problem by switching models.** When an agent fails on a long task, the first lever is context engineering — scope, compaction, scaffolding, tool budget. Model upgrades exist and sometimes matter, but they don't substitute for harness work; they expose where the harness is missing.
 
+**Match the model to the task.** Top-tier models aren't free, and using them for everything wastes both cost and the weekly limits that shape what you can do in a session. Use cheap, fast models for mechanical work — summarising, formatting, classification. Use mid-tier for routine reasoning — drafting code, refactoring, bounded analysis. Reserve top-tier with high effort for the work where getting it wrong is expensive — system design, debugging across many files, reviewing production code, and the orchestrator that routes the others. A common pattern: top-tier plans and verifies, mid-tier executes, cheap-tier handles the boilerplate. The agent's intelligence budget is finite; spend it where it matters.
+
 ---
 
 ## What Makes Up the Context
@@ -254,6 +256,8 @@ Common subagent patterns:
 - Domain specialists: security review, infrastructure audit, test runner.
 - Spec → architect → implementer → tester pipelines.
 
+Set the model tier per subagent. Subagents doing bounded, routine work — explorers, test runners, file searchers — can run on a mid-tier model. Subagents making judgment calls that matter — reviewers, security auditors, architects — should run on the top tier. The orchestrator (the main session) runs top-tier with high effort because routing decisions cascade; getting them wrong wastes every downstream call.
+
 ### Stage 3 — Agent teams for collaboration
 
 Multi-agent orchestration becomes useful when:
@@ -355,6 +359,7 @@ A handful of patterns that keep showing up in successful adoptions:
 | Sandbox automation | Managed permissions plus sandbox for anything touching real systems |
 | Trust the harness | Models are capable; context and harness are the differentiator |
 | Context > model upgrade | Fix the harness before reaching for a bigger model |
+| Match model to task | Top tier for orchestration and judgment; mid for routine; cheap for mechanical |
 | Keep questioning the harness | Re-evaluate scaffolding as models improve |
 
 ---
